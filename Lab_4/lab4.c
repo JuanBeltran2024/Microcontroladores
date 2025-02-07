@@ -35,6 +35,7 @@ void main(void) {
    RBPU = 0;
    unsigned char Tecla = 0;
    unsigned char estado = 0;
+   unsigned char estado_2 = 0;
    unsigned char cuenta_objetivo = 0;
    unsigned char cuenta_restante = 0;
    char let[4];
@@ -50,16 +51,19 @@ void main(void) {
     letra("bienvenido");  
      __delay_ms(5000);
      
+     
+    while(1){
+        
+    if (estado == 0 && estado_2 == 0){
      limpiar();
      puntero(1,1);
      letra("Ingrese cuenta");
      puntero(2,1);
      letra("(1-59) y OK");
-     
-    while(1){
-       
-    Tecla = teclado();
+     estado_2 = 1;
+    }
     
+    Tecla = teclado();
      
      if (Tecla > 0 && Tecla <= 9 && estado == 0) {
             cuenta_objetivo = cuenta_objetivo*10 + Tecla; 
@@ -124,7 +128,9 @@ void main(void) {
         letra("Cuenta objetiva");
         puntero(2,4);
         letra("CUMPLIDA!");
+        __delay_ms(1000);
         estado = 0;
+        estado_2 = 0;
         
             
     }
