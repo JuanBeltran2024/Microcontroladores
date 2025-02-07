@@ -124,7 +124,7 @@ void main(void) {
         letra("Cuenta objetiva");
         puntero(2,4);
         letra("CUMPLIDA!");
-        estado = 0
+        estado = 0;
         
             
     }
