@@ -3,13 +3,14 @@
 #pragma config FOSC = INTOSC_EC
 #pragma config WDT = OFF
 #pragma config LVP = OFF //Programacion de bajo voltaje
-#define _XTAL_FREQ 8000000
+#define _XTAL_FREQ 1000000
 void main(void) {
     
     ADCON1 = 15;
     TRISB = 0b11110000;
     TRISD = 0b11110000;
     TRISE = 0b00000000;
+    TRISA2 = 0;
     unsigned char numero = 0;
     unsigned char btn_state = 0;
     unsigned char btn_state2 = 0;
@@ -57,7 +58,13 @@ void main(void) {
     if (numero > 9){
     
         numero = 0;
-        col_led = col_led + 1;
+        col_led = col_led + 1;  
+        
+        RA2 = 1;
+        __delay_ms(250);
+         RA2 = 0;
+         
+        
            
     }      
     }
@@ -103,6 +110,10 @@ void main(void) {
          }else if (col_led > 5){
          
          col_led = 0;
+        RA2 = 1;
+         __delay_ms(800);
+        RA2 = 0;
+         
                  
          }
     }
