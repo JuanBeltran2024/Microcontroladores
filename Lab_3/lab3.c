@@ -4,11 +4,15 @@
 #pragma config WDT = OFF
 #pragma config LVP = OFF //Programacion de bajo voltaje
 #define _XTAL_FREQ 1000000
+
+
+void interrupt ISR(void); 
+
 void main(void) {
     
     ADCON1 = 15;
     TRISB = 0b11110000;
-    TRISD = 0b11110000;
+    TRISD = 0b11100000;
     TRISE = 0b00000000;
     TRISA2 = 0;
     unsigned char numero = 0;
@@ -20,6 +24,15 @@ void main(void) {
     LATE = 0b00000111;
     LATB = 0;
     
+    //interrupciones
+    TMR0=3036;
+    T0CON=0b00000001;
+    TMR0IF=0;
+    TMR0IE=1;
+    TMR0ON=1;
+    RBIF=0;
+    GIE=1;
+
       
     
            
@@ -122,3 +135,13 @@ void main(void) {
     
     return; 
 }
+
+void interrupt ISR(void){
+        
+    if(TMR0IF == 1){
+        TMR0=3036; 
+        TMR0IF=0;     
+        LATD4=LATD4^1;
+    }
+}
+
