@@ -1,5 +1,4 @@
 #include <xc.h>
-#include <stdlib.h>
 #include <stdio.h>
 
 
@@ -11,6 +10,7 @@
 
 void comando_config(unsigned char c);
 void dato(unsigned char d);
+void dato_especial(unsigned char *caracter, unsigned char m);
 void inicio();
 void letra(const char *le);
 void puntero(unsigned char row, unsigned char col);
@@ -18,12 +18,15 @@ unsigned char teclado(void);
 void interrupt ISR(void);
 void limpiar();
 
+// Variables globales
+unsigned char Tecla = 0;
 
 
 
 void main(void) {
     
     ADCON1=15;
+
     
   // TRISC = 0b00000000;//RA3-RA5 EN-RW-RS
    TRISA = 0b00000000;//RA3-RA5 EN-RW-RS
@@ -32,47 +35,104 @@ void main(void) {
    TRISE = 0b11111000;
    LATB =  0b00000000;
    LATE =  0b00000000;
+   LATD=0;
    RBPU = 0;
-   unsigned char Tecla = 0;
+   __delay_ms(100);
+   // interrupciones
+   //timer0
+    TMR0=3036;// precarga
+    T0CON=0b00000001;
+    TMR0IF=0;//bandera
+    TMR0IE=1;
+    TMR0ON=1;
+    //Teclado
+    RBIF=0;// bandera
+    RBIE=1;
+    
+    GIE=1;// activacion global interrupciones
+   
    unsigned char estado = 0;
    unsigned char estado_2 = 0;
    unsigned char cuenta_objetivo = 0;
    unsigned char cuenta_restante = 0;
+   unsigned char emergencia = 0;
+   unsigned char led = 1;
+   
+   // arreglo
+   unsigned char caracter[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};
+   unsigned char caracter_2[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};
+   
    char let[4];
    char let_2[4];
    
-
+   unsigned char i = 0;
+   unsigned char j = 0;
     
     
     inicio();    // Inicializa el LCD
     __delay_ms(200); 
     
-    puntero(1,1);
-    letra("bienvenido");  
-     __delay_ms(5000);
+    //-----------------Mensaje de bienvenida----------\\
+
+    for(j=0;j<2;j){
+        i=0;
+        j++;
+        for(i=0;i<82;i++){
+    puntero(1,i);
+    letra("bienvenido");
+    dato_especial(caracter,1);
+     puntero(1,(10+i));
+     dato(1); 
+     __delay_ms(50);   
+     limpiar();
+     if(i == 16){
+         i = 53;
+     }
+    }
+    }
      
-     
+   //--------------------------------------------------\\ 
+    
     while(1){
         
-    if (estado == 0 && estado_2 == 0){
-     limpiar();
-     puntero(1,1);
-     letra("Ingrese cuenta");
-     puntero(2,1);
-     letra("(1-59) y OK");
-     estado_2 = 1;
+        
+        
+  
+  //--------------------Parada de emergencia--------------------\\    
+    if (Tecla == 8 && emergencia == 0){
+        limpiar();
+        puntero(1,1);
+        letra("Parada de");
+        puntero(2,1);
+        letra("emergencia");
+        emergencia = 1;
     }
+  //-------------------------------------------------------------\\
+  //--------------------Funcionamiento LCD--------------------\\
+   
+    //logica primer mensaje
+    if (estado == 0 && estado_2 == 0){
+        limpiar();
+        puntero(1,1);
+        letra("Ingrese cuenta");
+        puntero(2,1);
+        letra("(1-59) y OK");
+        estado_2 = 1;
+    }
+
     
-    Tecla = teclado();
-     
+   
+    if (emergencia == 0){
+    
      if (Tecla > 0 && Tecla <= 9 && estado == 0) {
             cuenta_objetivo = cuenta_objetivo*10 + Tecla; 
             cuenta_restante = cuenta_objetivo;
             puntero(2,1);
             letra("             "); 
             puntero(2,1); 
-            sprintf(let, "%d", cuenta_objetivo); 
+            sprintf(let, "%d", cuenta_objetivo);//transforma enteros a texto 
             letra(let); 
+            Tecla = 0;
             
         }if (Tecla == 10 && estado == 0) {
             if (cuenta_objetivo >= 1 && cuenta_objetivo <= 59) { // Valida el valor
@@ -91,6 +151,7 @@ void main(void) {
                 letra("Objetivo:");
                 puntero(2,10);
                 letra(let); 
+                Tecla = 0;
                 
             } else {
                 limpiar();
@@ -105,11 +166,13 @@ void main(void) {
                 letra("Ingrese cuenta");
                 puntero(2,1);
                 letra("(1-59) y OK");
+                Tecla = 0;
             }
             } else if (Tecla == 12) { 
             cuenta_objetivo = 0; 
             puntero(2, 1);
             letra("               ");
+            Tecla = 0;
         }
     
     if (Tecla == 4 && cuenta_restante > 0){
@@ -120,6 +183,7 @@ void main(void) {
        letra("  ");
        puntero(1,10);
        letra(let_2);
+       Tecla = 0;
     }
     if (Tecla == 10 && cuenta_restante == 0 && estado == 1){
         cuenta_objetivo = 0;
@@ -131,14 +195,17 @@ void main(void) {
         __delay_ms(1000);
         estado = 0;
         estado_2 = 0;
+        Tecla = 0;
         
             
     }
  
 
-    __delay_ms(200);
-}
-  
+    
+      }
+
+     
+   }  
 }
 
     
@@ -197,6 +264,19 @@ void dato(unsigned char d){
  
 }
 
+void dato_especial(unsigned char *caracter, unsigned char m){
+    
+    unsigned char i=0;
+    comando_config(0x40 | (m*8));
+    
+  
+    for(i = 0; i<8; i++){
+        dato(caracter[i]);
+    }
+     comando_config(0x80);
+    
+}
+
 void letra(const char *le){
     while (*le){
         
@@ -214,7 +294,7 @@ void puntero(unsigned char row, unsigned char col) {
     }
     comando_config(pos);
 }  
-
+/*
 unsigned char teclado(void) {
     LATB = 0b11110000;
     while(RB4==1 && RB5==1 && RB6==1 && RB7==1);
@@ -244,6 +324,50 @@ unsigned char teclado(void) {
     if (RB7 == 0) return 16;
 
     return 0; 
+}
+
+ */
+
+void interrupt ISR(void){
+    if(RBIF==1){
+        if(PORTB!=0b11110000){
+            Tecla=0;
+            LATB=0b11111110;
+            if(RB4==0) Tecla=1;
+            else if(RB5==0) Tecla=2;
+            else if(RB6==0) Tecla=3;
+            else if(RB7==0) Tecla=4;
+            else{
+                LATB=0b11111101;
+                if(RB4==0) Tecla=5;
+                else if(RB5==0) Tecla=6;
+                else if(RB6==0) Tecla=7;
+                else if(RB7==0) Tecla=8;
+                else{
+                    LATB=0b11111011;
+                    if(RB4==0) Tecla=9;
+                    else if(RB5==0) Tecla=10;
+                    else if(RB6==0) Tecla=11;
+                    else if(RB7==0) Tecla=12;
+                    else{
+                        LATB=0b11110111;
+                        if(RB4==0) Tecla=13;
+                        else if(RB5==0) Tecla=14;
+                        else if(RB6==0) Tecla=15;
+                        else if(RB7==0) Tecla=16;
+                    }
+                }
+            }
+            LATB=0b11110000;
+        }
+        __delay_ms(100);
+        RBIF=0;
+    }
+    if(TMR0IF==1){
+        TMR0IF=0;
+        TMR0=3036;
+        LATD4=LATD4^1;
+    }
 }
 
 
