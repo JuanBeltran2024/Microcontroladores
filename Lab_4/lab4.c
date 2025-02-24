@@ -99,7 +99,7 @@ void main(void) {
         
   
   //--------------------Parada de emergencia--------------------\\    
-    if (Tecla == 8 && emergencia == 0){
+    if (Tecla == 10 && emergencia == 0){
         limpiar();
         puntero(1,1);
         letra("Parada de");
@@ -110,7 +110,10 @@ void main(void) {
   //-------------------------------------------------------------\\
   //--------------------Funcionamiento LCD--------------------\\
    
+    if (emergencia == 0){
+        
     //logica primer mensaje
+    
     if (estado == 0 && estado_2 == 0){
         limpiar();
         puntero(1,1);
@@ -122,7 +125,7 @@ void main(void) {
 
     
    
-    if (emergencia == 0){
+    
     
      if (Tecla > 0 && Tecla <= 9 && estado == 0) {
             cuenta_objetivo = cuenta_objetivo*10 + Tecla; 
@@ -134,7 +137,7 @@ void main(void) {
             letra(let); 
             Tecla = 0;
             
-        }if (Tecla == 10 && estado == 0) {
+        }if (Tecla == 15 && estado == 0) {
             if (cuenta_objetivo >= 1 && cuenta_objetivo <= 59) { // Valida el valor
                 limpiar();
                 puntero(1,1);
@@ -168,14 +171,14 @@ void main(void) {
                 letra("(1-59) y OK");
                 Tecla = 0;
             }
-            } else if (Tecla == 12) { 
+            } else if (Tecla == 11 && estado == 0) { 
             cuenta_objetivo = 0; 
             puntero(2, 1);
             letra("               ");
             Tecla = 0;
         }
     
-    if (Tecla == 4 && cuenta_restante > 0){
+    if (Tecla == 12 && cuenta_restante > 0 && estado == 1){
         cuenta_restante = cuenta_restante - 1;
     __delay_ms(200);  
        puntero(1,10);
@@ -185,7 +188,7 @@ void main(void) {
        letra(let_2);
        Tecla = 0;
     }
-    if (Tecla == 10 && cuenta_restante == 0 && estado == 1){
+    if (Tecla == 15 && cuenta_restante == 0 && estado == 1){
         cuenta_objetivo = 0;
         limpiar();
         puntero(1,1);
@@ -336,25 +339,25 @@ void interrupt ISR(void){
             if(RB4==0) Tecla=1;
             else if(RB5==0) Tecla=2;
             else if(RB6==0) Tecla=3;
-            else if(RB7==0) Tecla=4;
+            else if(RB7==0) Tecla=10;
             else{
                 LATB=0b11111101;
-                if(RB4==0) Tecla=5;
-                else if(RB5==0) Tecla=6;
-                else if(RB6==0) Tecla=7;
-                else if(RB7==0) Tecla=8;
+                if(RB4==0) Tecla=4;
+                else if(RB5==0) Tecla=5;
+                else if(RB6==0) Tecla=6;
+                else if(RB7==0) Tecla=11;
                 else{
                     LATB=0b11111011;
-                    if(RB4==0) Tecla=9;
-                    else if(RB5==0) Tecla=10;
-                    else if(RB6==0) Tecla=11;
+                    if(RB4==0) Tecla=7;
+                    else if(RB5==0) Tecla=8;
+                    else if(RB6==0) Tecla=9;
                     else if(RB7==0) Tecla=12;
                     else{
                         LATB=0b11110111;
                         if(RB4==0) Tecla=13;
-                        else if(RB5==0) Tecla=14;
-                        else if(RB6==0) Tecla=15;
-                        else if(RB7==0) Tecla=16;
+                        else if(RB5==0) Tecla=0;
+                        else if(RB6==0) Tecla=14;
+                        else if(RB7==0) Tecla=15;
                     }
                 }
             }
