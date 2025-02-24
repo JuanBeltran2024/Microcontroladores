@@ -20,14 +20,16 @@ void limpiar();
 
 // Variables globales
 unsigned char Tecla = 0;
+unsigned char actividad = 0;  
+unsigned char temporizador = 0;
+
 
 
 
 void main(void) {
     
     ADCON1=15;
-
-    
+   
   // TRISC = 0b00000000;//RA3-RA5 EN-RW-RS
    TRISA = 0b00000000;//RA3-RA5 EN-RW-RS
    TRISB = 0b11110000;// teclado matricial
@@ -35,7 +37,8 @@ void main(void) {
    TRISE = 0b11111000;
    LATB =  0b00000000;
    LATE =  0b00000000;
-   LATD=0;
+   LATD = 0;
+   LATA4 = 0;
    RBPU = 0;
    __delay_ms(100);
    // interrupciones
@@ -56,7 +59,7 @@ void main(void) {
    unsigned char cuenta_objetivo = 0;
    unsigned char cuenta_restante = 0;
    unsigned char emergencia = 0;
-   unsigned char led = 1;
+   unsigned char fondo = 0;
    
    // arreglo
    unsigned char caracter[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};
@@ -67,7 +70,11 @@ void main(void) {
    
    unsigned char i = 0;
    unsigned char j = 0;
-    
+   
+   //Registros de inactividad
+   unsigned char activo_10s = 0;  // Flag para controlar la luz de fondo
+   unsigned char activo_20s = 0;  // Flag para controlar la suspensión
+   unsigned char fondo = 0;
     
     inicio();    // Inicializa el LCD
     __delay_ms(200); 
@@ -77,7 +84,7 @@ void main(void) {
     for(j=0;j<2;j){
         i=0;
         j++;
-        for(i=0;i<82;i++){
+        for(i=0;i<2;i++){
     puntero(1,i);
     letra("bienvenido");
     dato_especial(caracter,1);
@@ -137,7 +144,7 @@ void main(void) {
             letra(let); 
             Tecla = 0;
             
-        }if (Tecla == 15 && estado == 0) {
+        }if (Tecla == 13 && estado == 0) {
             if (cuenta_objetivo >= 1 && cuenta_objetivo <= 59) { // Valida el valor
                 limpiar();
                 puntero(1,1);
@@ -188,7 +195,7 @@ void main(void) {
        letra(let_2);
        Tecla = 0;
     }
-    if (Tecla == 15 && cuenta_restante == 0 && estado == 1){
+    if (Tecla == 13 && cuenta_restante == 0 && estado == 1){
         cuenta_objetivo = 0;
         limpiar();
         puntero(1,1);
@@ -204,10 +211,48 @@ void main(void) {
     }
  
 
-    
+  
       }
+    
+   //Logica de inactividad   
+    if (actividad) {
+            
+        if (activo_10s == 1){RA4 = !fondo;}
+        if (Tecla == 15){
+            fondo = !fondo;
+            RA4 = fondo;
+            __delay_ms(200);
+        }
+            temporizador = 0;
+            actividad = 0;  // Restablecer flag de actividad
+            activo_10s = 0;  // Reactivar la luz de fondo
+            activo_20s = 0;  // Reactivar el sistema
+            
+            
+        }
+    
+            if (temporizador >= 10 && activo_10s == 0) {
+            RA4 = 1;         // Apagar luz de fondo
+            activo_10s = 1; 
+            fondo = 1;
+        }
 
-     
+  
+        if (temporizador >= 20 && activo_20s == 0) {
+            RA4 = 1;  // Asegurar que la luz de fondo está apagada
+            comando_config(0x08);  // Apagar pantalla LCD
+            activo_20s = 1;  // Evitar que se vuelva a ejecutar
+            fondo = 1;
+        }
+
+        // Si se detecta actividad, reactivar pantalla
+        if (temporizador == 0 && activo_20s) {
+            inicio();  // Reiniciar el LCD
+            __delay_ms(200);
+            
+            estado == 0;
+            estado_2 == 0;
+        }
    }  
 }
 
@@ -217,7 +262,7 @@ void main(void) {
 void inicio(){  
 comando_config(0x02);
 comando_config(0x28);
-comando_config(0x0F);
+comando_config(0x0C);
 comando_config(0x06);
 comando_config(0x01);
 __delay_ms(2);
@@ -332,7 +377,9 @@ unsigned char teclado(void) {
  */
 
 void interrupt ISR(void){
+    
     if(RBIF==1){
+      actividad = 1;
         if(PORTB!=0b11110000){
             Tecla=0;
             LATB=0b11111110;
@@ -364,13 +411,16 @@ void interrupt ISR(void){
             LATB=0b11110000;
         }
         __delay_ms(100);
+        
         RBIF=0;
     }
     if(TMR0IF==1){
         TMR0IF=0;
         TMR0=3036;
         LATD4=LATD4^1;
+        temporizador = temporizador + 1;
     }
+   
 }
 
 
