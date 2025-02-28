@@ -53,7 +53,7 @@ void main(void) {
     GIE=1;// activacion global interrupciones
    
    unsigned char estado = 0;// se activa si la cuenta objetivo esta dentro del rango establecido y pasa al tercer mensaje
-   unsigned char estado_2 = 0;
+   unsigned char estado_2 = 0;//evita que el mensaje de piezas a contar se repita en cada iteración del bucle principal.
    unsigned char cuenta_objetivo = 0;//Almacena el valor de cuenta objetivo, a partir del teclado y, se valida que este en el rango permitido
    unsigned char cuenta_restante = 0;//valida la cuenta objetivo, la variable se inicia con el mismo valor y se va decrementando conforme el pulsador
    unsigned char emergencia = 0;// parada de emergencia
@@ -71,7 +71,7 @@ void main(void) {
    
    //Registros de inactividad
    unsigned char activo_10s = 0;  // registro para controlar la luz de fondo
-   unsigned char activo_20s = 0;  // registro para controlar la suspensión
+   unsigned char Se posiciona el cursor en la primera fila, pero ahora en la columna (10 + i)activo_20s = 0;  // registro para controlar la suspensión
    unsigned char fondo = 0;// variable que almacena el estado de la luz de fondo
     
     inicio();    // Inicializa el LCD
@@ -79,19 +79,19 @@ void main(void) {
     
     //-----------------Mensaje de bienvenida----------\\
 
-    for(j=0;j<2;j){
+    for(j=0;j<2;j){// cuando cumple el ciclo vuelve a la primera fila
         i=0;
         j++;
-        for(i=0;i<2;i++){//bucle para variar la posición o el contenido mostrado en la LCD.
+        for(i=0;i<82;i++){//bucle para variar la posición de las columnas del contenido mostrado en la LCD.
     puntero(1,i);// posiciona el cursor en la primera fila y en la columna i.
     letra("bienvenido");//escribe
-    dato_especial(caracter,1);
-     puntero(1,(10+i));
-     dato(1); 
+    dato_especial(caracter,1);//Se envía un carácter especial a la LCD, El parámetro 1 indica la posición en la memoria CGRAM donde se almacenó el carácter.
+     puntero(1,(10+i));//Se posiciona el cursor en la primera fila, pero ahora en la columna (10 + i)
+     dato(1); // escribe el caracter especial
      __delay_ms(50);   
      limpiar();
      if(i == 16){
-         i = 53;
+         i = 53;// pasa a la segunda fila
      }
     }
     }
@@ -117,7 +117,7 @@ void main(void) {
    
     if (emergencia == 0){
         
-    //logica primer mensaje
+    //logica del mensaje piezas a contar
     
     if (estado == 0 && estado_2 == 0){
         limpiar();
