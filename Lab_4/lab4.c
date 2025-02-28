@@ -191,7 +191,7 @@ void main(void) {
         estado_2 = 0;
      }
      if (RD7 == 0 ){
-      state_bton = 0
+      state_bton = 0;
      }
     if (RD7 == 0 && state_bton == 0 && cuenta_restante > 0){
         cuenta_restante = cuenta_restante - 1;
@@ -336,7 +336,7 @@ void puntero(unsigned char row, unsigned char col) {// Ubica el puntero en la po
     } else if (row == 2) { //cursor debe ubicarse en la fila 2
         pos = 0xC0 + (col - 1);//Fuerza el cursor al inicio de la segunda fila, ajusta la posicion de col para que inicie en 0.
     }
-    comando_config(pos); envia la posicion calculada a comando_config
+    comando_config(pos);//envia la posicion calculada a comando_config
 }  
 
 
