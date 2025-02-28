@@ -12,7 +12,7 @@ void comando_config(unsigned char c);// Envio de comandos a la LCD /No retorna n
 void dato(unsigned char d);// No retorna nada, recibe variables
 void dato_especial(unsigned char *caracter, unsigned char m);//Escribe caracteres especiales para ser enviados a dato /No retorna nada, recibe variables
 void inicio();// Configuracion inicial LCD /No rotena, no recibe
-void letra(const char *le);// Escribe cadenas de texto para ser enviadas a dato
+void letra(const char *le);// Escribe cadenas de texto para ser enviadas a la LCD
 void puntero(unsigned char row, unsigned char col);// Ubica el puntero en la posicion deseada/No retorna nada, recibe variables
 void interrupt ISR(void);//Rutina de interrupciones
 void limpiar();// Limpiar pantalla de visualizacion /No rotena, no recibe
@@ -132,36 +132,36 @@ void main(void) {
    
     
     if (estado == 0){
-     if (Tecla > 0 && Tecla <= 9) {
+     if (Tecla > 0 && Tecla <= 9) {//valida que la tecla que se presione esta dentro de 0 - 9
             cuenta_objetivo = cuenta_objetivo*10 + Tecla; 
             cuenta_restante = cuenta_objetivo;
             puntero(2,1);
-            letra("             "); 
+            letra("             "); // limpiar cualquier número o mensaje previamente mostrado en esa línea
             puntero(2,1); 
-            sprintf(let, "%d", cuenta_objetivo);//transforma enteros a texto 
-            letra(let); 
+            sprintf(let, "%d", cuenta_objetivo);//transforma enteros a texto, que se almacena en el arreglo let.
+            letra(let); // escribe cadenas de texto 
             Tecla = 0;
             
         }if (Tecla == 15) {
-            if (cuenta_objetivo >= 1 && cuenta_objetivo <= 59) { // Valida el valor
+            if (cuenta_objetivo >= 1 && cuenta_objetivo <= 59) { // Valida el valor este en el rango
                 limpiar();
                 puntero(1,1);
                 letra("Cuenta guardada"); 
-                estado = 1;
+                estado = 1;//indica que se ha finalizado la entrada y validación de la cuenta.
                 __delay_ms(1000); 
                 limpiar();
                 puntero(1,1);
                 letra("restante:");
                 puntero(1,10);
                 sprintf(let_2, "%d", cuenta_restante);
-                letra(let_2);
+                letra(let_2);// escribe el valor de la cuenta restante
                 puntero(2,1);
                 letra("Objetivo:");
                 puntero(2,10);
                 letra(let); 
                 Tecla = 0;
                 
-            } else {
+            } else {// si no esta dentro del rango
                 limpiar();
                 puntero(1, 1);
                 letra("Error: fuera de"); // Mensaje de error
