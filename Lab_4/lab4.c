@@ -10,12 +10,11 @@
 
 void comando_config(unsigned char c);// Envio de comandos a la LCD /No retorna nada, recibe variables
 void dato(unsigned char d);// No retorna nada, recibe variables
-void dato_especial(unsigned char *caracter, unsigned char m);// No retorna nada, recibe variables
+void dato_especial(unsigned char *caracter, unsigned char m);//Escribe caracteres especiales para ser enviados a dato /No retorna nada, recibe variables
 void inicio();// Configuracion inicial LCD /No rotena, no recibe
-void letra(const char *le);
-void puntero(unsigned char row, unsigned char col);
-unsigned char teclado(void);
-void interrupt ISR(void);
+void letra(const char *le);// Escribe cadenas de texto para ser enviadas a dato
+void puntero(unsigned char row, unsigned char col);// Ubica el puntero en la posicion deseada/No retorna nada, recibe variables
+void interrupt ISR(void);//Rutina de interrupciones
 void limpiar();// Limpiar pantalla de visualizacion /No rotena, no recibe
 
 // Variables globales
@@ -32,7 +31,7 @@ void main(void) {
    
    TRISA = 0b00000000;//RA3-RA5 EN-RS, RW a tierra, RA4 encender y apagar LCD
    TRISB = 0b11110000;// Teclado matricial; RB0-RB3 filas (S), RB4-RB7 columnas (E) todos deben ser entradas para que funcione la interrupcion   
-   TRISD = 0b00000000; //RD3-RD0 datos LCD
+   TRISD = 0b10000000; //RD3-RD0 datos LCD
    //TRISE = 0b11111000; Led RGB
    LATB =  0b00000000;// Display 7 seg
    //LATE =  0b00000000;
@@ -59,6 +58,7 @@ void main(void) {
    unsigned char cuenta_restante = 0;
    unsigned char emergencia = 0;
    unsigned char fondo = 0;
+   unsigned char state_bton = 0;//para antirrebote
    
    // arreglo
    unsigned char caracter[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};// Arreglo para mostrar el caracter especial (corazon)
@@ -104,7 +104,7 @@ void main(void) {
         
   
   //--------------------Parada de emergencia--------------------\\    
-    if (Tecla == 10 && emergencia == 0){
+    if (Tecla == 12 && emergencia == 0){
         limpiar();
         puntero(1,1);
         letra("Parada de");
@@ -131,8 +131,8 @@ void main(void) {
     
    
     
-    
-     if (Tecla > 0 && Tecla <= 9 && estado == 0) {
+    if (estado == 0){
+     if (Tecla > 0 && Tecla <= 9) {
             cuenta_objetivo = cuenta_objetivo*10 + Tecla; 
             cuenta_restante = cuenta_objetivo;
             puntero(2,1);
@@ -142,7 +142,7 @@ void main(void) {
             letra(let); 
             Tecla = 0;
             
-        }if (Tecla == 13 && estado == 0) {
+        }if (Tecla == 15) {
             if (cuenta_objetivo >= 1 && cuenta_objetivo <= 59) { // Valida el valor
                 limpiar();
                 puntero(1,1);
@@ -176,14 +176,24 @@ void main(void) {
                 letra("(1-59) y OK");
                 Tecla = 0;
             }
-            } else if (Tecla == 11 && estado == 0) { 
+            } else if (Tecla == 13) { 
             cuenta_objetivo = 0; 
             puntero(2, 1);
             letra("               ");
             Tecla = 0;
         }
-    
-    if (Tecla == 12 && cuenta_restante > 0 && estado == 1){
+    }
+
+    if( estado == 1){
+     if (Tecla == 11 ){
+        cuenta_objetivo = 0;
+        estado = 0;
+        estado_2 = 0;
+     }
+     if (RD7 == 0 ){
+      state_bton = 0
+     }
+    if (RD7 == 0 && state_bton == 0 && cuenta_restante > 0){
         cuenta_restante = cuenta_restante - 1;
     __delay_ms(200);  
        puntero(1,10);
@@ -191,9 +201,9 @@ void main(void) {
        letra("  ");
        puntero(1,10);
        letra(let_2);
-       Tecla = 0;
+      state_bton == 1;
     }
-    if (Tecla == 13 && cuenta_restante == 0 && estado == 1){
+    if (Tecla == 14 && cuenta_restante == 0 && estado == 1){
         cuenta_objetivo = 0;
         limpiar();
         puntero(1,1);
@@ -207,16 +217,17 @@ void main(void) {
         
             
     }
+    }
  
 
   
       }
     
    //Logica de inactividad   
-    if (actividad) {
+    if (actividad) {//verifica si actividad = 1
             
         if (activo_10s == 1){RA4 = !fondo;}
-        if (Tecla == 15){
+        if (Tecla == 10){
             fondo = !fondo;
             RA4 = fondo;
             __delay_ms(200);
@@ -279,7 +290,7 @@ void comando_config(unsigned char c){// Envio de comandos a la LCD /C;variable a
     __delay_ms(1);
        RA3 = 0;  // E Fin de la ejecucion fin del pulso
 
-    LATD = (c & 00001111); // Envio de los bits menos significativos con la operacion AND
+    LATD = (c & 0b00001111); // Envio de los bits menos significativos con la operacion AND
         RA3= 1;  //E
     __delay_ms(1);
     RA3 = 0;  // E    
@@ -292,7 +303,7 @@ void dato(unsigned char d){//Envio de datos a la LCD /d; Variabale que recibe da
     RA3= 1;  //E
     __delay_ms(1);
     RA3= 0;  //E
-    LATD = (d & 00001111);   
+    LATD = (d & 0b00001111);   
     RA3= 1;  //E
     __delay_ms(1);
     RA3= 0;  //E
@@ -302,70 +313,36 @@ void dato(unsigned char d){//Envio de datos a la LCD /d; Variabale que recibe da
 void dato_especial(unsigned char *caracter, unsigned char m){// caracter funciona como apuntador, m; variabale que se le cargan los datos
     
     unsigned char i=0;
-    comando_config(0x40 | (m*8));//pendiente
-    
-  
+    comando_config(0x40 | (m*8));//enviamos el comando de escribir caracteres propios y hacemos operacion OR con el valor de m multiplicado 8 para que se posicione al inicio de cada fila    
     for(i = 0; i<8; i++){// Bucle
-        dato(caracter[i]);//apunta al valor de i y guarda el valor de i para enviarlo a dato
+        dato(caracter[i]);//Se cargan los datos del arreglo caracter paa ser enviados a dato
     }
-     comando_config(0x80);/Envial el comando de forzar el cursor al comienzo de la primera linea
+     comando_config(0x80);//Envial el comando de forzar el cursor al comienzo de la primera linea
     
 }
 
-void letra(const char *le){
-    while (*le){
+void letra(const char *le){//Es una función que recibe un puntero a una cadena de caractereses (palabra), para ser enviada a dato
+    while (*le){//verifica que el carácter apuntado por le no sea el carácter nulo si no finalizara el bucle
         
-      dato(*le++);
+      dato(*le++);//obtiene el carácter actual en la posición apuntada por le,envía este carácter a dato y incrementa el puntero le, moviéndolo al siguiente carácter de la cadena.
       
     }
 } 
  
-void puntero(unsigned char row, unsigned char col) {
+void puntero(unsigned char row, unsigned char col) {// Ubica el puntero en la posicion deseada
     unsigned char pos;
-    if (row == 1) {     
-        pos = 0x80 + (col - 1);
-    } else if (row == 2) {
-        pos = 0xC0 + (col - 1);
+    if (row == 1) {  //cursor debe ubicarse en la fila 1   
+        pos = 0x80 + (col - 1);//Fuerza el cursor al inicio de la primera fila, ajusta la posicion de col para que inicie en 0.
+    } else if (row == 2) { //cursor debe ubicarse en la fila 2
+        pos = 0xC0 + (col - 1);//Fuerza el cursor al inicio de la segunda fila, ajusta la posicion de col para que inicie en 0.
     }
-    comando_config(pos);
+    comando_config(pos); envia la posicion calculada a comando_config
 }  
-/*
-unsigned char teclado(void) {
-    LATB = 0b11110000;
-    while(RB4==1 && RB5==1 && RB6==1 && RB7==1);
-    
-    LATB = 0b11111110;
-    if (RB4 == 0) return 1;
-    if (RB5 == 0) return 2;
-    if (RB6 == 0) return 3;
-    if (RB7 == 0) return 4;
 
-    LATB = 0b11111101;
-    if (RB4 == 0) return 5;
-    if (RB5 == 0) return 6;
-    if (RB6 == 0) return 7;
-    if (RB7 == 0) return 8;
-
-    LATB = 0b11111011;
-    if (RB4 == 0) return 9;
-    if (RB5 == 0) return 10; 
-    if (RB6 == 0) return 11;
-    if (RB7 == 0) return 12; 
-
-    LATB = 0b11110111;
-    if (RB4 == 0) return 13;
-    if (RB5 == 0) return 14;
-    if (RB6 == 0) return 15;
-    if (RB7 == 0) return 16;
-
-    return 0; 
-}
-
- */
 
 void interrupt ISR(void){
     
-    if(RBIF==1){
+    if(RBIF==1){//verifica si se activo la bandera
       actividad = 1;
         if(PORTB!=0b11110000){
             Tecla=0;
