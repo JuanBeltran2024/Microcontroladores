@@ -36,7 +36,7 @@ void main(void) {
    LATB =  0b00000000;// Display 7 seg
    //LATE =  0b00000000;
    LATD = 0;
-   LATA4 = 0;// Revisar
+   LATA4 = 0;// luz de fondo activa, negada
    RBPU = 0;// Habilitacion de resistencias de pull up esta negado
    __delay_ms(100);
    // interrupciones
@@ -71,7 +71,7 @@ void main(void) {
    
    //Registros de inactividad
    unsigned char activo_10s = 0;  // registro para controlar la luz de fondo
-   unsigned char Se posiciona el cursor en la primera fila, pero ahora en la columna (10 + i)activo_20s = 0;  // registro para controlar la suspensión
+   unsigned char activo_20s = 0;  // registro para controlar la suspensión
    unsigned char fondo = 0;// variable que almacena el estado de la luz de fondo
     
     inicio();    // Inicializa el LCD
@@ -176,7 +176,7 @@ void main(void) {
                 letra("(1-59) y OK");
                 Tecla = 0;
             }
-            } else if (Tecla == 13) { 
+            } else if (Tecla == 13) { // logica de la tecla borrar la cuenta objetivo
             cuenta_objetivo = 0; 
             puntero(2, 1);
             letra("               ");
@@ -185,15 +185,16 @@ void main(void) {
     }
 
     if( estado == 1){
-     if (Tecla == 11 ){
+     if (Tecla == 11 ){// logica de la tecla reiniciar la cuenta objetivo
         cuenta_objetivo = 0;
         estado = 0;
         estado_2 = 0;
      }
+     // logica boton para contar
      if (RD7 == 0 ){
       state_bton = 0;
      }
-    if (RD7 == 0 && state_bton == 0 && cuenta_restante > 0){
+    if (RD7 == 0 && state_bton == 0 && cuenta_restante > 0){// si se presiona el pulsador y hay cuenta restante
         cuenta_restante = cuenta_restante - 1;
     __delay_ms(200);  
        puntero(1,10);
@@ -203,7 +204,7 @@ void main(void) {
        letra(let_2);
       state_bton == 1;
     }
-    if (Tecla == 14 && cuenta_restante == 0 && estado == 1){
+    if (Tecla == 14 && cuenta_restante == 0 && estado == 1){// logica de tecla de finalizar conteo
         cuenta_objetivo = 0;
         limpiar();
         puntero(1,1);
@@ -226,14 +227,14 @@ void main(void) {
    //Logica de inactividad   
     if (actividad) {//verifica si actividad = 1
             
-        if (activo_10s == 1){RA4 = !fondo;}
-        if (Tecla == 10){
+        if (activo_10s == 1){RA4 = !fondo;}// logica de suspension despues de 10 seg
+        if (Tecla == 10){//logica de la tecla encender y apagar
             fondo = !fondo;
             RA4 = fondo;
             __delay_ms(200);
         }
             temporizador = 0;
-            actividad = 0;  // Restablecer flag de actividad
+            actividad = 0;  // Restablecer  actividad
             activo_10s = 0;  // Reactivar la luz de fondo
             activo_20s = 0;  // Reactivar el sistema
             
