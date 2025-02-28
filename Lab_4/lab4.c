@@ -5,18 +5,18 @@
 #pragma config FOSC = INTOSC_EC
 #pragma config WDT = OFF
 #pragma config LVP = OFF //Programacion de bajo voltaje
-#define _XTAL_FREQ 1000000
+#define _XTAL_FREQ 1000000// Relos para uasar los retardos
+ 
 
-
-void comando_config(unsigned char c);
-void dato(unsigned char d);
-void dato_especial(unsigned char *caracter, unsigned char m);
-void inicio();
+void comando_config(unsigned char c);// Envio de comandos a la LCD /No retorna nada, recibe variables
+void dato(unsigned char d);// No retorna nada, recibe variables
+void dato_especial(unsigned char *caracter, unsigned char m);// No retorna nada, recibe variables
+void inicio();// Configuracion inicial LCD /No rotena, no recibe
 void letra(const char *le);
 void puntero(unsigned char row, unsigned char col);
 unsigned char teclado(void);
 void interrupt ISR(void);
-void limpiar();
+void limpiar();// Limpiar pantalla de visualizacion /No rotena, no recibe
 
 // Variables globales
 unsigned char Tecla = 0;
@@ -28,33 +28,32 @@ unsigned char temporizador = 0;
 
 void main(void) {
     
-    ADCON1=15;
+   ADCON1=15;// Apagar todas las funciones analogicas
    
-  // TRISC = 0b00000000;//RA3-RA5 EN-RW-RS
-   TRISA = 0b00000000;//RA3-RA5 EN-RW-RS
-   TRISB = 0b11110000;// teclado matricial
-   TRISD = 0b00000000; //RD7-RD4 datos LCD
-   TRISE = 0b11111000;
-   LATB =  0b00000000;
-   LATE =  0b00000000;
+   TRISA = 0b00000000;//RA3-RA5 EN-RS, RW a tierra, RA4 encender y apagar LCD
+   TRISB = 0b11110000;// Teclado matricial; RB0-RB3 filas (S), RB4-RB7 columnas (E) todos deben ser entradas para que funcione la interrupcion   
+   TRISD = 0b00000000; //RD3-RD0 datos LCD
+   //TRISE = 0b11111000; Led RGB
+   LATB =  0b00000000;// Display 7 seg
+   //LATE =  0b00000000;
    LATD = 0;
-   LATA4 = 0;
-   RBPU = 0;
+   LATA4 = 0;// Revisar
+   RBPU = 0;// Habilitacion de resistencias de pull up esta negado
    __delay_ms(100);
    // interrupciones
    //timer0
     TMR0=3036;// precarga
-    T0CON=0b00000001;
+    T0CON=0b00000001;// Registro de timer0, apagado el timer0, modo temporizador, PS=4, 16 bits
     TMR0IF=0;//bandera
-    TMR0IE=1;
-    TMR0ON=1;
+    TMR0IE=1;// Habilitacion local
+    TMR0ON=1;// Timer0 encendido
     //Teclado
-    RBIF=0;// bandera
-    RBIE=1;
+    RBIF=0;// Borrar bandera de interrupcion 
+    RBIE=1;// Habilitacion local de la interrupcion de teclado
     
     GIE=1;// activacion global interrupciones
    
-   unsigned char estado = 0;
+   unsigned char estado = 0;// se activa si la cuenta objetivo esta dentro del rango establecido y pasa al tercer mensaje
    unsigned char estado_2 = 0;
    unsigned char cuenta_objetivo = 0;
    unsigned char cuenta_restante = 0;
@@ -62,11 +61,10 @@ void main(void) {
    unsigned char fondo = 0;
    
    // arreglo
-   unsigned char caracter[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};
-   unsigned char caracter_2[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};
+   unsigned char caracter[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};// Arreglo para mostrar el caracter especial (corazon)
    
-   char let[4];
-   char let_2[4];
+   char let[3];// Arreglo para guardar las valores enteros de la cuenta objetivo que van a ser convertidos a texto
+   char let_2[3];// Arreglo para guardar las valores enteros de la cuenta restante que van a ser convertidos a texto
    
    unsigned char i = 0;
    unsigned char j = 0;
@@ -259,7 +257,7 @@ void main(void) {
     
     
 
-void inicio(){  
+void inicio(){  // Configuracion inicial LCD
 comando_config(0x02);
 comando_config(0x28);
 comando_config(0x0C);
@@ -268,60 +266,49 @@ comando_config(0x01);
 __delay_ms(2);
 }
 
-void limpiar(){
+void limpiar(){// Limpiar pantalla de visualizacion
 comando_config(0x01);
 __delay_ms(2);
 }
 
-void comando_config(unsigned char c){
-   // RC0 = 0;   // RW
-    RA5 = 0;
-    LATD =  (c >> 4);  
-   // RC1 = 1;  // EN
-    RA3 = 1;
+void comando_config(unsigned char c){// Envio de comandos a la LCD /C;variable a la que se le cargan los datos
+   
+    RA5 = 0;// RS=0 seleccion de comando
+    LATD =  (c >> 4); // Corrimiento de 4 posiciones a la derecha para enviar los bits mas significativos a la LCD
+       RA3 = 1;// E ejecucion de comando a la LCD comienzo del pulso
     __delay_ms(1);
-    // RC1 = 1;
-    RA3 = 0;  // EN
+       RA3 = 0;  // E Fin de la ejecucion fin del pulso
 
-    LATD = (c & 0x0F);
-    // RC1 = 1;
-    RA3= 1;  //EN
+    LATD = (c & 00001111); // Envio de los bits menos significativos con la operacion AND
+        RA3= 1;  //E
     __delay_ms(1);
-    // RC1 = 1;
-    RA3 = 0;  // EN
-    
+    RA3 = 0;  // E    
 }
 
-void dato(unsigned char d){
+void dato(unsigned char d){//Envio de datos a la LCD /d; Variabale que recibe datos
  
-    // RC0 = 0;   // RW
-    RA5 = 1;
+    RA5 = 1;// RS=1, Registro de datos
     LATD =  (d >> 4);  
-   // RC1 = 1;
-    RA3= 1;  //EN
+    RA3= 1;  //E
     __delay_ms(1);
-    // RC1 = 1;
-    RA3= 0;  //EN
-
-    LATD = (d & 0x0F);   
-    // RC1 = 1;
-    RA3= 1;  //EN
+    RA3= 0;  //E
+    LATD = (d & 00001111);   
+    RA3= 1;  //E
     __delay_ms(1);
-    // RC1 = 1;
-    RA3= 0;  //EN
+    RA3= 0;  //E
  
 }
 
-void dato_especial(unsigned char *caracter, unsigned char m){
+void dato_especial(unsigned char *caracter, unsigned char m){// caracter funciona como apuntador, m; variabale que se le cargan los datos
     
     unsigned char i=0;
-    comando_config(0x40 | (m*8));
+    comando_config(0x40 | (m*8));//pendiente
     
   
-    for(i = 0; i<8; i++){
-        dato(caracter[i]);
+    for(i = 0; i<8; i++){// Bucle
+        dato(caracter[i]);//apunta al valor de i y guarda el valor de i para enviarlo a dato
     }
-     comando_config(0x80);
+     comando_config(0x80);/Envial el comando de forzar el cursor al comienzo de la primera linea
     
 }
 
