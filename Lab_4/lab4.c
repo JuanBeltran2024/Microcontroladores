@@ -194,7 +194,7 @@ void main(void) {
      if (RD7 == 0 ){
       state_bton = 0;
      }
-    if (RD7 == 0 && state_bton == 0 && cuenta_restante > 0){// si se presiona el pulsador y hay cuenta restante
+    if (RD7 == 1 && state_bton == 0 && cuenta_restante > 0){// si se presiona el pulsador y hay cuenta restante
         cuenta_restante = cuenta_restante - 1;
     __delay_ms(200);  
        puntero(1,10);
