@@ -5,7 +5,7 @@
 #pragma config FOSC = INTOSC_EC
 #pragma config WDT = OFF
 #pragma config LVP = OFF //Programacion de bajo voltaje
-#define _XTAL_FREQ 1000000// Relos para uasar los retardos
+#define _XTAL_FREQ 1000000// Reloj para uasar los retardos
  
 
 void comando_config(unsigned char c);// Envio de comandos a la LCD /No retorna nada, recibe variables
@@ -18,9 +18,9 @@ void interrupt ISR(void);//Rutina de interrupciones
 void limpiar();// Limpiar pantalla de visualizacion /No rotena, no recibe
 
 // Variables globales
-unsigned char Tecla = 0;
-unsigned char actividad = 0;  
-unsigned char temporizador = 0;
+unsigned char Tecla = 0;// variable para almacenar el código de la tecla que se presiona en el teclado matricial. 
+unsigned char actividad = 0;//registro que indica si se ha producido alguna actividad en el teclado
+unsigned char temporizador = 0;//variable para contar intervalos de 1seg, se incrementa por el Timer0 
 
 
 
@@ -54,10 +54,10 @@ void main(void) {
    
    unsigned char estado = 0;// se activa si la cuenta objetivo esta dentro del rango establecido y pasa al tercer mensaje
    unsigned char estado_2 = 0;
-   unsigned char cuenta_objetivo = 0;
-   unsigned char cuenta_restante = 0;
-   unsigned char emergencia = 0;
-   unsigned char fondo = 0;
+   unsigned char cuenta_objetivo = 0;//Almacena el valor de cuenta objetivo, a partir del teclado y, se valida que este en el rango permitido
+   unsigned char cuenta_restante = 0;//valida la cuenta objetivo, la variable se inicia con el mismo valor y se va decrementando conforme el pulsador
+   unsigned char emergencia = 0;// parada de emergencia
+   unsigned char fondo = 0;//controla el estado de la luz de fondo
    unsigned char state_bton = 0;//para antirrebote
    
    // arreglo
@@ -66,13 +66,13 @@ void main(void) {
    char let[3];// Arreglo para guardar las valores enteros de la cuenta objetivo que van a ser convertidos a texto
    char let_2[3];// Arreglo para guardar las valores enteros de la cuenta restante que van a ser convertidos a texto
    
-   unsigned char i = 0;
+   unsigned char i = 0;//variables para bucles
    unsigned char j = 0;
    
    //Registros de inactividad
-   unsigned char activo_10s = 0;  // Flag para controlar la luz de fondo
-   unsigned char activo_20s = 0;  // Flag para controlar la suspensión
-   unsigned char fondo = 0;
+   unsigned char activo_10s = 0;  // registro para controlar la luz de fondo
+   unsigned char activo_20s = 0;  // registro para controlar la suspensión
+   unsigned char fondo = 0;// variable que almacena el estado de la luz de fondo
     
     inicio();    // Inicializa el LCD
     __delay_ms(200); 
@@ -82,9 +82,9 @@ void main(void) {
     for(j=0;j<2;j){
         i=0;
         j++;
-        for(i=0;i<2;i++){
-    puntero(1,i);
-    letra("bienvenido");
+        for(i=0;i<2;i++){//bucle para variar la posición o el contenido mostrado en la LCD.
+    puntero(1,i);// posiciona el cursor en la primera fila y en la columna i.
+    letra("bienvenido");//escribe
     dato_especial(caracter,1);
      puntero(1,(10+i));
      dato(1); 
@@ -343,28 +343,28 @@ void puntero(unsigned char row, unsigned char col) {// Ubica el puntero en la po
 void interrupt ISR(void){
     
     if(RBIF==1){//verifica si se activo la bandera
-      actividad = 1;
-        if(PORTB!=0b11110000){
-            Tecla=0;
-            LATB=0b11111110;
+      actividad = 1;//Variable para establecer la logica dae inactividad
+        if(PORTB!=0b11110000){//Se verifica que el valor leído en PORTB sea distinto de 0b11110000, identifica si se presiono una tecla
+            Tecla=0;// estado de reposo si no se cumple ninguna condicion
+            LATB=0b11111110;// barrido a la primera fila 
             if(RB4==0) Tecla=1;
             else if(RB5==0) Tecla=2;
             else if(RB6==0) Tecla=3;
             else if(RB7==0) Tecla=10;
             else{
-                LATB=0b11111101;
+                LATB=0b11111101;// barrido a la segunda fila 
                 if(RB4==0) Tecla=4;
                 else if(RB5==0) Tecla=5;
                 else if(RB6==0) Tecla=6;
                 else if(RB7==0) Tecla=11;
                 else{
-                    LATB=0b11111011;
+                    LATB=0b11111011;// barrido a la tercera fila 
                     if(RB4==0) Tecla=7;
                     else if(RB5==0) Tecla=8;
                     else if(RB6==0) Tecla=9;
                     else if(RB7==0) Tecla=12;
                     else{
-                        LATB=0b11110111;
+                        LATB=0b11110111;// barrido a la cuarta fila
                         if(RB4==0) Tecla=13;
                         else if(RB5==0) Tecla=0;
                         else if(RB6==0) Tecla=14;
@@ -372,19 +372,22 @@ void interrupt ISR(void){
                     }
                 }
             }
-            LATB=0b11110000;
+            LATB=0b11110000;// restaura al valor de reposo
         }
         __delay_ms(100);
         
-        RBIF=0;
+        RBIF=0;//limpia la bandera
     }
-    if(TMR0IF==1){
-        TMR0IF=0;
-        TMR0=3036;
-        LATD4=LATD4^1;
-        temporizador = temporizador + 1;
+    if(TMR0IF==1){// deteccion de la bandera por desbordamiento
+        TMR0IF=0;//limpia la bandera de timer0
+        TMR0=3036;// precarga
+        LATD4=LATD4^1;// operacion XOR, conmuta el led
+        temporizador = temporizador + 1;//se usa en la lógica de inactividad, determinado tiempo sin actividad.
     }
    
 }
+
+
+
 
 
