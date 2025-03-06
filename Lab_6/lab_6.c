@@ -7,6 +7,8 @@
 #pragma config WDT = OFF
 #pragma config LVP = OFF //Programacion de bajo voltaje
 #define _XTAL_FREQ 1000000// Relos para uasar los retardos
+#define TRIGGER RC0    // Define el pin de disparo en RC0
+#define ECHO RC1 
  
 
 void comando_config(unsigned char c);// Envio de comandos a la LCD /No retorna nada, recibe variables
@@ -28,13 +30,14 @@ void iniciar_ADC(void);
 unsigned int Conversion(unsigned char canal);
 void velocidad_motor(unsigned int resultado1);
 
-
-
+//sensor ultrasonic
+unsigned char MedirDistancia(void);
 // Variables globales
 int led = 3036;
 unsigned char Tecla = 0;
 unsigned char actividad = 0;  
 unsigned char temporizador = 0;
+unsigned char etimeout=0,ctimeout=0;
 
 
 
@@ -52,12 +55,15 @@ void main(void) {
    TRISE = 0b11110000;
    TRISC6 = 0;
    TRISC2 = 0;
+   TRISC0 = 0;
    //TRISE = 0b11111000; Led RGB
    LATB =  0b00000000;// Display 7 seg
    LATE =  0b00001111;
    LATD = 0;
    LATA4 = 1;// luz de fondo
    LATC6 = 0;
+   LATC2 = 0;
+   LATC0 = 0;
    RBPU = 0;// Habilitacion de resistencias de pull up esta negado
    __delay_ms(100);
    // interrupciones
@@ -67,6 +73,9 @@ void main(void) {
     TMR0IF=0;//bandera
     TMR0IE=1;// Habilitacion local
     TMR0ON=1;// Timer0 encendido
+    
+    //timer1
+    T1CON=0b10000000;
     
     //timer2 
     TMR2 = 0;
@@ -92,6 +101,9 @@ void main(void) {
    
    //motor
    unsigned int resultado1 = 0;
+   
+   //Sensor ultrasonido
+   unsigned int distancia = 0;
    
    // arreglo
    unsigned char caracter[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};// Arreglo para mostrar el caracter especial (corazon)
@@ -147,7 +159,7 @@ void main(void) {
       resultado1 = Conversion(0);
       velocidad_motor(resultado1);
         
-      if (RC0 == 1){actividad = 1;}  
+      if (distancia <= 8){actividad = 1;}  
   
   //--------------------Parada de emergencia--------------------\\    
     if (Tecla == 12 && emergencia == 0){
@@ -237,7 +249,9 @@ void main(void) {
         estado_2 = 0;
      }
     
-     if (RC0 == 0 ){
+     distancia = MedirDistancia();
+     
+     if (distancia > 8 ){
       state_bton = 0;
      }
      
@@ -249,7 +263,7 @@ void main(void) {
     LATE = 0b00000111;
     }
      
-    if (RC0 == 1 && state_bton == 0 && cuenta_restante > 0){
+    if (distancia <= 8 && state_bton == 0 && cuenta_restante > 0){
         cuenta_restante = cuenta_restante - 1;    
         cuenta = cuenta + 1; 
        puntero(1,10);
@@ -259,6 +273,7 @@ void main(void) {
        letra(let_2);
       state_bton = 1;
       inicio_1 = 1;
+      __delay_ms(200);
       
    if (inicio_1 == 1){
         
@@ -481,6 +496,33 @@ void velocidad_motor(unsigned int resultado1){
         
 }
 
+unsigned char MedirDistancia(void){
+  unsigned char aux=0;
+  CCP2CON=0b00000100; //Ajustar CCP en modo captura con flanco de bajada
+  TMR1=0;             //Iniciamos el timer1 en 0
+  CCP2IF=0;           //Iniciar bandera CCPx en 0
+  TRIGGER=1;          //Dar inicio al sensor
+  __delay_us(10);
+  TRIGGER=0;
+  etimeout=1;         //Se habilita la condición de antibloqueo
+  while(ECHO==0  && etimeout==1); //Se espera que el sensor empiece la
+                      //medición o que pase el antibloqueo (aprox 2s)
+  if(etimeout==0){    //Si el sensor no responde se retorna un 0
+    return 0;
+  }    
+  TMR1ON=1;           //Se da inicio al timer1 o medición de tiempo
+  while(CCP2IF==0 && TMR1IF==0);   //Espera a que la señal de ultrasonido regrese
+  TMR1ON=0;           //Se da parada al timer 1 o medición de tiempo
+  if(TMR1IF==1)       //Se comprueba que la medición del pulso del sensor no
+    aux=255;          //exceda el rango del timer1, si es asi se limita a 255
+  else{  
+    if(CCPR2>=3556)  //Si el sensor excede 254cm se limita a este valor
+      CCPR2=3556;
+    aux=CCPR2/(14) ; //Se calcula el valor de distancia a partir del tiempo
+  }
+  return aux;         //Se retorna la medición de distancia obtenida
+}
+
 void interrupt ISR(void){
 
     
@@ -524,9 +566,15 @@ void interrupt ISR(void){
    if(TMR0IF == 1){
         TMR0IF=0;
         TMR0=led; //precarga     
-        LATC6=LATC6^1; //conmutacion del pin C6(LED) con la operacion XOR
+        LATA1=LATA1^1; //conmutacion del pin C6(LED) con la operacion XOR
         temporizador = temporizador + 1;
         
+         if(etimeout==1)   //Se cuenta cada segundo si esta habilitada la condición
+            ctimeout++;     // de antibloqueo
+         else
+            ctimeout=0;     //Si no esta habilitada se reinicia la variable
+          if(ctimeout>=2)   //Si la condición de antibloqueo excede dos cuentas
+             etimeout=0; 
     }
    
 }
