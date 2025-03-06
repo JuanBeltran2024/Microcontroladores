@@ -9,7 +9,6 @@
 #define _XTAL_FREQ 1000000// Relos para uasar los retardos
  
 
-
 void comando_config(unsigned char c);// Envio de comandos a la LCD /No retorna nada, recibe variables
 void dato(unsigned char d);// No retorna nada, recibe variables
 void dato_especial(unsigned char *caracter, unsigned char m);//Escribe caracteres especiales para ser enviados a dato /No retorna nada, recibe variables
@@ -23,10 +22,12 @@ void H_L_voltage_min(void);
 void H_L_voltage_max(void);
 
 //control motor
+
 void iniciar_PWM(void);
 void iniciar_ADC(void);
 unsigned int Conversion(unsigned char canal);
 void velocidad_motor(unsigned int resultado1);
+
 
 
 // Variables globales
@@ -40,12 +41,17 @@ unsigned char temporizador = 0;
 
 
 void main(void) {
-     
+    
+    //inicio control motor
+   iniciar_ADC();
+   iniciar_PWM();
+   
    TRISA = 0b00000001;//RA3-RA5 EN-RS, RW a tierra, RA4 encender y apagar LCD
    TRISB = 0b11110000;// Teclado matricial; RB0-RB3 filas (S), RB4-RB7 columnas (E) todos deben ser entradas para que funcione la interrupcion   
    TRISD = 0b00000000; //bton sumar y 7Seg D0-D3
    TRISE = 0b11110000;
-   TRISC = 0b10111011;
+   TRISC6 = 0;
+   TRISC2 = 0;
    //TRISE = 0b11111000; Led RGB
    LATB =  0b00000000;// Display 7 seg
    LATE =  0b00001111;
@@ -54,10 +60,6 @@ void main(void) {
    LATC6 = 0;
    RBPU = 0;// Habilitacion de resistencias de pull up esta negado
    __delay_ms(100);
-   
-   iniciar_PWM();
-   iniciar_ADC();
-  
    // interrupciones
    //timer0
     TMR0=3036;// precarga
@@ -65,17 +67,17 @@ void main(void) {
     TMR0IF=0;//bandera
     TMR0IE=1;// Habilitacion local
     TMR0ON=1;// Timer0 encendido
+    
+    //timer2 
+    TMR2 = 0;
+    TMR2ON = 1;
+    
     //Teclado
     RBIF=0;// Borrar bandera de interrupcion 
     RBIE=1;// Habilitacion local de la interrupcion de teclado
     
-    //timer2
-    TMR2 = 0;
-    TMR2ON = 1;
-   
     GIE=1;// activacion global interrupciones
    
-    //registros
    unsigned char estado = 0;// se activa si la cuenta objetivo esta dentro del rango establecido y pasa al tercer mensaje
    unsigned char estado_2 = 0;
    unsigned char cuenta_objetivo = 0;
@@ -85,11 +87,11 @@ void main(void) {
    unsigned char fondo = 0;
    unsigned char state_bton = 0;//para antirrebote
    
+   unsigned char col_led = 0;//registro cambio de color RGB
+   unsigned char inicio_1 = 0;//para el estado de inicio
+   
    //motor
    unsigned int resultado1 = 0;
-   
-   unsigned char col_led = 0;//registro cambio de color RGB
-unsigned char inicio_1 = 0;//para el estado de inicio
    
    // arreglo
    unsigned char caracter[8] = { 0b00000,0b01010,0b11111,0b11111,0b01110,0b00100,0b00000,0b00000};// Arreglo para mostrar el caracter especial (corazon)
@@ -105,6 +107,8 @@ unsigned char inicio_1 = 0;//para el estado de inicio
    unsigned char activo_10s = 0;  // Flag para controlar la luz de fondo
    unsigned char activo_20s = 0;  // Flag para controlar la suspensión
    unsigned char fondo = 0;
+   
+
     
     inicio();    // Inicializa el LCD
     __delay_ms(200); 
@@ -140,10 +144,8 @@ unsigned char inicio_1 = 0;//para el estado de inicio
     
     while(1){
         
-      //--------------------logica motor-------------------\\
-
-        resultado1 = Conversion(0);
-        velocidad_motor(resultado1);
+      resultado1 = Conversion(0);
+      velocidad_motor(resultado1);
         
       if (RC0 == 1){actividad = 1;}  
   
@@ -155,7 +157,6 @@ unsigned char inicio_1 = 0;//para el estado de inicio
         puntero(2,1);
         letra("emergencia");
         emergencia = 1;
-        
     }
   //-------------------------------------------------------------\\
   //--------------------Funcionamiento LCD--------------------\\
@@ -307,29 +308,8 @@ unsigned char inicio_1 = 0;//para el estado de inicio
 }
     }
 
-      
-    
-    //-------------------------------------------------------\\
-
- //------------logica boton Contador------------------------
- 
-        
-        
-         
-        
-           
           
- //-------------------------------------------------------------- 
-
-    
- //--------------------Logica color led RGB------------------------
-            
-        
-    
-      //---------------------------------------------------------------------------
-
-    
-     
+    //-------------------------------------------------------\\
      
     if (Tecla == 14 && cuenta_restante == 0 && estado == 1){
         cuenta_objetivo = 0;
@@ -393,21 +373,21 @@ unsigned char inicio_1 = 0;//para el estado de inicio
    }  
 }
 
-  
+    
     
 
 void inicio(){  // Configuracion inicial LCD
-comando_config(0x02);
-comando_config(0x28);
-comando_config(0x0C);
-comando_config(0x06);
-comando_config(0x01);
-__delay_ms(2);
+    comando_config(0x02);
+    comando_config(0x28);
+    comando_config(0x0C);
+    comando_config(0x06);
+    comando_config(0x01);
+    __delay_ms(2);
 }
 
 void limpiar(){// Limpiar pantalla de visualizacion
-comando_config(0x01);
-__delay_ms(2);
+    comando_config(0x01);
+    __delay_ms(2);
 }
 
 void comando_config(unsigned char c){// Envio de comandos a la LCD /C;variable a la que se le cargan los datos
@@ -466,9 +446,6 @@ void puntero(unsigned char row, unsigned char col) {// Ubica el puntero en la po
     }
     comando_config(pos);//envia la posicion calculada a comando_config
 }  
-
-//-------------------------------------Control Motor--------------------------\\
-
 void iniciar_PWM(void){
     PR2 = 249;
     CCPR1L = 0;
@@ -477,6 +454,7 @@ void iniciar_PWM(void){
 
 
 }
+
 void iniciar_ADC(void){
     ADCON0 = 0b00000001;
     ADCON1 = 0b00001110;
@@ -502,9 +480,6 @@ void velocidad_motor(unsigned int resultado1){
        else if (resultado1 == 0) CCPR1L = 0;
         
 }
-
-//---------------------------------------------------------------------------\\
-
 
 void interrupt ISR(void){
 
@@ -556,6 +531,3 @@ void interrupt ISR(void){
    
 }
 
-
-    
- 
