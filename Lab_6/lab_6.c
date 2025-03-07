@@ -1,4 +1,4 @@
-#include <xc.h>
+ #include <xc.h>
 #include <stdio.h>
 
 
@@ -23,8 +23,8 @@ void seg(unsigned char t);
 void H_L_voltage_min(void);
 void H_L_voltage_max(void);
 
-//control motor
 
+//control motor
 void iniciar_PWM(void);
 void iniciar_ADC(void);
 unsigned int Conversion(unsigned char canal);
@@ -32,22 +32,39 @@ void velocidad_motor(unsigned int resultado1);
 
 //sensor ultrasonic
 unsigned char MedirDistancia(void);
+
+//modulo RS232
+void Transmitir(unsigned char BufferT);
+void Transmitir_frase(const char *c);
+void iniciar_RS232(void);
+
+//EEPROM
+void escribir_EEPROM(unsigned char direccion, unsigned char dato);
+unsigned char leer_EEPROM(unsigned char direccion);
+
 // Variables globales
 int led = 3036;
 unsigned char Tecla = 0;
 unsigned char actividad = 0;  
 unsigned char temporizador = 0;
 unsigned char etimeout=0,ctimeout=0;
-
+unsigned char comando = 0;
+unsigned char seria_activacion = 0;
 
 
 
 
 void main(void) {
     
+
+    
     //inicio control motor
    iniciar_ADC();
    iniciar_PWM();
+   
+   //iniciar RS232
+   iniciar_RS232();
+
    
    TRISA = 0b00000001;//RA3-RA5 EN-RS, RW a tierra, RA4 encender y apagar LCD
    TRISB = 0b11110000;// Teclado matricial; RB0-RB3 filas (S), RB4-RB7 columnas (E) todos deben ser entradas para que funcione la interrupcion   
@@ -101,6 +118,7 @@ void main(void) {
    
    //motor
    unsigned int resultado1 = 0;
+   unsigned int velociad_porcentaje = 0;
    
    //Sensor ultrasonido
    unsigned int distancia = 0;
@@ -120,11 +138,32 @@ void main(void) {
    unsigned char activo_20s = 0;  // Flag para controlar la suspensión
    unsigned char fondo = 0;
    
-
+   
     
     inicio();    // Inicializa el LCD
     __delay_ms(200); 
     
+    //EEPROM
+     if (RCON == 0b11000000) {  // Verificar Power-On Reset
+        RCON = 0b00000000;  // Limpiar la bandera POR
+        Transmitir_frase("¿Restaurar conteo? (s/n)\r\n");
+        
+        while (!RCIF);  // Esperar respuesta del usuario
+        unsigned char respuesta = RCREG;
+        
+        if (respuesta == 's' || respuesta == 'S') {
+            cuenta = leer_EEPROM(0x00); // Cargar cuenta guardada
+            col_led = leer_EEPROM(0x01);
+            Transmitir_frase("Cuenta restaurada: ");
+            Transmitir(cuenta);
+            Transmitir(',');
+            Transmitir(col_led);
+            Transmitir('\r');
+        } else {
+            cuenta = 0;
+            Transmitir_frase("Nueva cuenta iniciada\r\n");
+        }
+     }
     //-----------------Mensaje de bienvenida----------\\
 
    
@@ -156,8 +195,9 @@ void main(void) {
     
     while(1){
         
-      resultado1 = Conversion(0);
-      velocidad_motor(resultado1);
+            //guadar cuenta en EEPROM
+    escribir_EEPROM(0x00,cuenta);
+    escribir_EEPROM(0x01,col_led);
         
       if (distancia <= 8){actividad = 1;}  
   
@@ -243,20 +283,44 @@ void main(void) {
     }
 
     if( estado == 1){
+        
      if (Tecla == 11 ){
         cuenta_objetivo = 0;
         estado = 0;
         estado_2 = 0;
      }
-    
-     distancia = MedirDistancia();
+     
+     //logica velocidad del motor y PWM
+     if (seria_activacion == 0){
+     //Mostrar valor de PWM
+       Transmitir_frase("Valor del PWM: ");
+       Transmitir((velociad_porcentaje/100) + 48); //muestra el primer numero
+        Transmitir((velociad_porcentaje%100)/10 + 48); //para mostrar el segundo numero, se usa el % que es el operador numeral
+        Transmitir((velociad_porcentaje%10)/10 + 48);
+        Transmitir_frase("%");//transmite un frase
+        Transmitir('\r');
+        
+         resultado1 = Conversion(0);
+         velociad_porcentaje = (resultado1*100)/255;
+         velocidad_motor(resultado1);
+     }
+     //logica medir distancia
+     // mostrar distancia del objeto
+        Transmitir_frase("Distancia objeto: ");
+        Transmitir((distancia/10) + 48); 
+        Transmitir((distancia%10) + 48); 
+        Transmitir_frase("cm");
+        Transmitir('\r');
+        __delay_ms(500);
+        
+     distancia = MedirDistancia() + 1;
      
      if (distancia > 8 ){
       state_bton = 0;
      }
      
         // -----------------7 segmentosss----------------------------------------------------
-      LATD = cuenta; //corrimiento para utilizar los mas significativos valor del codificador del 7 seg
+      LATD = cuenta; //valor del codificador del 7 seg
     //--------------------Estado inicio--------------------------\\
 
     if(cuenta == 0 && inicio_1 == 0){
@@ -523,6 +587,51 @@ unsigned char MedirDistancia(void){
   return aux;         //Se retorna la medición de distancia obtenida
 }
 
+void Transmitir(unsigned char BufferT){
+    while(TRMT==0);
+    TXREG=BufferT;
+}
+
+void Transmitir_frase(const char *c){
+        
+    while(*c){
+        Transmitir(*c++);
+    }
+}
+
+void iniciar_RS232(void){
+    TXSTA = 0b00100100; // Habilita el transmisor en modo asíncrono
+    RCSTA = 0b10010000; // Habilita la recepción continua
+
+    // Configuración del baud rate
+    BAUDCON = 0b00001000; // Configuración del divisor
+    SPBRG = 25; // Velocidad 9600 bps
+
+    // Habilitar interrupciones de RS232
+    RCIE = 1;  // Habilita la interrupción por recepción de datos
+    PEIE = 1;  // Habilita interrupciones periféricas
+}
+
+void escribir_EEPROM(unsigned char direccion, unsigned char dato){
+    EEADR = direccion;
+    EEDATA = dato;
+    EECON1 = 0b000000100; //habilita la escritura en EEPROM
+    GIE = 0; // Deshabilitar interrupciones globales para evitar corrupción de datos
+    EECON2 = 0x55;
+    EECON2 = 0xAA;
+    EECON1 = 0b00000101;  // Iniciar escritura (WR = 1)
+    
+    while (EECON1 & 0b00000001);  // Mientras WR = 1, la escritura está en proceso
+    EECON1 = 0b00000000; 
+    INTCON = 0b11000000;
+}
+
+unsigned char leer_EEPROM(unsigned char direccion) {
+    EEADR = direccion;   // Seleccionar dirección de EEPROM
+    EECON1 = 0b00000001; // Iniciar lectura (RD = 1)
+    return EEDATA;       // Retornar el dato leído
+}
+
 void interrupt ISR(void){
 
     
@@ -561,6 +670,19 @@ void interrupt ISR(void){
         __delay_ms(100);
         
         RBIF=0;
+    }
+    
+       if (RCIF == 1) {  // Si hay un dato recibido por RS232
+           seria_activacion = 1;
+           comando = RCREG;
+                  // Ajustar velocidad del motor según el comando recibido
+            if (comando == 0b01111010 || comando == 0b01011010) velocidad_motor(0);  
+            if (comando == 0b01111000 || comando == 0b01011000) velocidad_motor(50);   
+            if (comando == 0b01100011 || comando == 0b01000011) velocidad_motor(100); 
+            if (comando == 0b01110110 || comando == 0b01010110) velocidad_motor(150); 
+            if (comando == 0b01100010 || comando == 0b01000010) velocidad_motor(200); 
+            if (comando == 0b01101110 || comando == 0b01001110) velocidad_motor(200); 
+         // Leer dato recibido            
     }
     
    if(TMR0IF == 1){
