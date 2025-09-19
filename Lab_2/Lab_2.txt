@@ -1,0 +1,48 @@
+; Fosc = 1Hz, Tosc = 1s, Fbus = 0.25, Tbus = 4s
+    
+include P18F4550.inc 
+	
+CONFIG FOSC = INTOSC_EC
+CONFIG WDT = OFF
+CONFIG LVP = OFF ;Programacion de bajo voltaje
+
+aux1 equ 0h
+aux2 equ 1h
+aux3 equ 2h
+ 
+inicio 
+ ;RD2 rojo
+ ;RD1 Verde
+ ;RD0 azul
+ clrf TRISE
+RGB
+ movlw b'00000111' ;Negro
+ movwf LATE
+ 
+ movlw b'00000110' ;Azul
+ movwf LATE   
+ 
+ movlw b'00000100' ;Cyan
+ movwf LATE 
+
+ movlw b'00000101' ;verde
+ movwf LATE 
+
+ movlw b'00000001' ;Amarillo
+ movwf LATE 
+
+ movlw b'00000000' ;Blanco
+ movwf LATE 
+
+ movlw b'00000010' ;Magenta
+ movwf LATE 
+
+ movlw b'00000011' ;Rojo
+ movwf LATE 
+
+goto RGB
+ 
+
+
+
+end
