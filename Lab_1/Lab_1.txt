@@ -1,0 +1,160 @@
+
+include P18F4550.inc
+
+;Crear variables
+aux1 equ 0h
+aux2 equ 1h
+resl equ 2h
+aux3 equ 3h
+aux4 equ 4h
+
+;Instrucciones
+ 
+;Se usan cuando se va a implementa a al PIC
+ 
+;Etiqueta
+Inicio 
+;ejemplo
+movlw .9
+movwf aux1
+movlw .255
+movwf aux1
+movlw .256
+movwf aux1
+;1
+movlw .7
+movwf aux1
+movf aux1,w
+addlw .3 ;Suma una constante a WREG
+movwf resl
+;2
+movlw .8  
+movwf aux1
+movlw .10 
+movwf aux2
+movf aux1,w
+addwf aux2, 0,0 ; suma una variable a WREG
+movwf resl
+;3
+movlw .5
+movwf aux1
+movf aux1,w
+sublw .9 ;Resta una constante a WREG
+movwf resl
+;4
+movlw .6
+movwf aux1 
+movlw .4
+movwf aux2
+movf aux2,w
+subwf aux1, 0,0 ;Resta una variable a WREG
+movwf resl
+;5
+movlw .5
+movwf aux1
+movf aux1,w
+mullw .4   ;multiplica una contante por WREG 
+;El resultado se guarda en dos registro que son PRODL 
+;Cuando el resultado de la operacion no supera los 255
+;si lo supero se guarda como un 1 en PRODH y lo sigue 
+;Haciendo de forma consecutiva
+movf PRODL,w 
+movwf resl
+;6
+movlw .12
+movwf aux1
+movlw .15
+movwf aux2
+movf aux1,w
+mulwf aux2, 1; multiplica una variable por WREG
+movf PRODL,w
+movwf resl
+;7
+movlw .12
+movwf aux1
+comf aux1,0,0 ;Calcula el complemento a 1 de una variable
+movwf resl
+;8
+movlw .12
+movwf aux1
+negf aux1, 1 ;Calula el complemento a 2 de una variable
+movff aux1,resl
+;9
+movlw .35
+movwf aux1
+movf aux1,w
+iorlw .7 ;Aplica la logica or "bitwise" entre una constante y WREG
+movwf resl
+;10
+movlw .20
+movwf aux1
+movlw .56
+movwf aux2
+movf aux1,w 
+iorwf aux2,0,1 ;Aplica la logica or "bitwise" entre una variable y WREG
+movwf resl
+;11
+movlw .62
+movwf aux1
+movf aux1,w
+andlw .15 ;Aplica la logica and "bitwise" entre una constante y WREG
+movwf resl
+;12
+movlw .100
+movwf aux1
+movlw .45
+movwf aux2
+movf aux1,w
+andwf aux2,0,0 ;Aplica la logica and "bitwise" entre una variable y WREG
+movwf resl
+;13
+movlw .120
+movwf aux1
+movf aux1,w
+xorlw .1 ;Aplica la logica Or exclusivo "bitwise" entre una constante y WREG
+movwf resl
+;14
+movlw .17
+movwf aux1
+movlw .90
+movwf aux2
+movf aux1,w
+xorwf aux2,1,0 ;Aplica la logica Or exclusivo "bitwise" entre una variable y WREG
+movff aux2,resl
+;15
+movlw .25
+movwf aux1
+movlw .40
+movwf aux2
+movlw .103
+movwf aux3
+movf aux1,w
+iorwf aux2, 0,1
+movwf resl
+movf aux3,w
+xorlw 0xD0
+andwf resl,0,0
+movwf aux4
+;16
+movlw .18
+movwf aux1
+movlw .60
+movwf aux2
+movlw .16
+movwf aux3
+movf aux1,w
+addwf aux2,0,0
+movwf resl
+movlw b'11010'
+subwf aux3,0,0
+mullw .3
+movf PRODL,w
+subwf resl,0,0
+movwf aux4
+
+
+ 
+
+
+
+ end
